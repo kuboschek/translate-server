@@ -1,4 +1,4 @@
-# Translate Servier
+# Translate Server
 ## What?
 * A server that bundles multiple translation services as a single HTTP API.
 * A server that caches repeated requests for the same translation.
