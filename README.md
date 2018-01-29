@@ -1,3 +1,5 @@
+[![Travis](https://img.shields.io/travis/kuboschek/translate-server.svg)]()
+[![Docker Build Status](https://img.shields.io/docker/build/kuboschek/translate-server.svg)]()
 # Translate Server
 ## What?
 * A server that bundles multiple translation services as a single HTTP API.
