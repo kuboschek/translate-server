@@ -6,7 +6,15 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"time"
 )
+
+var services = &[]TranslateService{
+	TestProvider{
+		failing: false,
+		delay:   time.Second * 2,
+	},
+}
 
 // writeResponse sets appropriate headers, then writes the translated string to the
 // http.ResponseWriter
@@ -33,6 +41,7 @@ func translateHandler(response http.ResponseWriter, request *http.Request) {
 	if err != nil {
 		response.WriteHeader(http.StatusInternalServerError)
 		response.Write([]byte(err.Error()))
+		return
 	}
 
 	if contentLang == "" {
@@ -64,7 +73,7 @@ func translateHandler(response http.ResponseWriter, request *http.Request) {
 	serviceResponse := make(chan TranslateResult)
 
 	// Go through all the services in order - return the first successful result
-	for _, svc := range services {
+	for _, svc := range *services {
 		go svc.GetTranslation(givenPhrase, contentLang, targetLanguage, &serviceResponse)
 
 		// Wait for the response from the service
