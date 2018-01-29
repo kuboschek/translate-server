@@ -10,7 +10,10 @@
 * Caching works too, it also persists to the file system, under `cache.gob` (`/go/src/translate-server/cache.gob` in the Docker image)
 
 ## How?
-* Run the Docker: `docker run -p 8080:8080 kuboschek/translate-server -e GOOGLE_API_KEY=$GOOGLE_API_KEY`
+* Run the Docker: 
+    
+    `docker run -p 8080:8080 -e GOOGLE_API_KEY=$GOOGLE_API_KEY kuboschek/translate-server`
+    
 * Send HTTP `POST` requests to port `8080` of the machine or container this is running in.
     * Send the content to be translated as `text/plain` in the request body.
     * Use the `Content-Language` header to indicate what language to translate from.
