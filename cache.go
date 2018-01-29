@@ -42,7 +42,7 @@ func StoreCache(writer io.Writer) {
 }
 
 // LoadCache reads the phrase cache from the reader.
-func LoadCache(reader io.Reader) {
+func LoadCache(reader io.Reader) error {
 	dec := gob.NewDecoder(reader)
-	dec.Decode(phraseMap)
+	return dec.Decode(phraseMap)
 }
