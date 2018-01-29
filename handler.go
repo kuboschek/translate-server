@@ -6,14 +6,10 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os"
 )
 
-var services = &[]TranslateService{
-	GcloudProvider{
-		apiKey: os.Getenv("GOOGLE_API_KEY"),
-	},
-}
+// TranslateHandler is an HTTP handler
+type TranslateHandler []TranslateService
 
 // writeResponse sets appropriate headers, then writes the translated string to the
 // http.ResponseWriter
@@ -26,7 +22,7 @@ func writeResponse(w http.ResponseWriter, targetLanguage, targetPhrase string) {
 	io.WriteString(w, targetPhrase)
 }
 
-func translateHandler(response http.ResponseWriter, request *http.Request) {
+func (services TranslateHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	// Disallow anything but POST requests
 	if request.Method != http.MethodPost {
 		response.WriteHeader(http.StatusMethodNotAllowed)
@@ -72,7 +68,7 @@ func translateHandler(response http.ResponseWriter, request *http.Request) {
 	serviceResponse := make(chan TranslateResult)
 
 	// Go through all the services in order - return the first successful result
-	for _, svc := range *services {
+	for _, svc := range services {
 		go svc.GetTranslation(givenPhrase, contentLang, targetLanguage, &serviceResponse)
 
 		// Wait for the response from the service
