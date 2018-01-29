@@ -23,11 +23,12 @@ func AddTranslation(targetLang, sourcePhrase, targetPhrase string) {
 
 // GetTranslation returns a translation from cache, or nil, if it's not present
 func GetTranslation(targetLang, sourcePhrase string) (targetPhrase *string) {
-	if _, ok := phraseMap[sourcePhrase]; !ok {
+	phrases, ok := phraseMap[sourcePhrase]
+	if !ok {
 		return nil
 	}
 
-	phrase, ok := phraseMap[sourcePhrase][targetLang]
+	phrase, ok := phrases[targetLang]
 	if !ok {
 		return nil
 	}
