@@ -37,13 +37,13 @@ func GetTranslation(targetLang, sourcePhrase string) (targetPhrase *string) {
 }
 
 // StoreCache writes the current phrase cache to the writer.
-func StoreCache(writer io.Writer) {
+func StoreCache(writer io.Writer) error {
 	enc := gob.NewEncoder(writer)
-	enc.Encode(phraseMap)
+	return enc.Encode(phraseMap)
 }
 
 // LoadCache reads the phrase cache from the reader.
 func LoadCache(reader io.Reader) error {
 	dec := gob.NewDecoder(reader)
-	return dec.Decode(phraseMap)
+	return dec.Decode(&phraseMap)
 }
