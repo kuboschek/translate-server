@@ -2,11 +2,13 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 )
 
 const (
@@ -34,7 +36,9 @@ func TestTranslateHandler(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rr := httptest.NewRecorder()
 
-	translateHandler(rr, req)
+	translateHandler := TranslateHandler{}
+	translateHandler.ServeHTTP(rr, req)
+
 	if rr.Code != http.StatusMethodNotAllowed {
 		t.Errorf("translateHandler should not allow %v requests.", http.MethodGet)
 	}
@@ -45,7 +49,8 @@ func TestTranslateHandler2(t *testing.T) {
 	req.Header.Set("Accept-Language", "en;q=1.2.3")
 	rr := httptest.NewRecorder()
 
-	translateHandler(rr, req)
+	translateHandler := TranslateHandler{}
+	translateHandler.ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusInternalServerError {
 		t.Error("translateHandler should reject malformed Accept-Language headers.")
@@ -57,7 +62,8 @@ func TestTranslateHandler3(t *testing.T) {
 	req.Header.Set("Accept-Language", "en,fr")
 	rr := httptest.NewRecorder()
 
-	translateHandler(rr, req)
+	translateHandler := TranslateHandler{}
+	translateHandler.ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusBadRequest {
 		t.Error("translateHandler should reject request with missing Content-Language headers.")
@@ -69,7 +75,8 @@ func TestTranslateHandler4(t *testing.T) {
 	req.Header.Set("Content-Language", "fr")
 	rr := httptest.NewRecorder()
 
-	translateHandler(rr, req)
+	translateHandler := TranslateHandler{}
+	translateHandler.ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusBadRequest {
 		t.Error("translateHandler should reject request with missing Accept-Language headers.")
@@ -83,7 +90,10 @@ func TestTranslateHandler5(t *testing.T) {
 	req.Header.Set("Content-Language", "de")
 	rr := httptest.NewRecorder()
 
-	translateHandler(rr, req)
+	translateHandler := TranslateHandler{
+		TestProvider{},
+	}
+	translateHandler.ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusOK {
 		t.Error("translateHandler should accept requests with appropriate headers.")
@@ -91,57 +101,46 @@ func TestTranslateHandler5(t *testing.T) {
 }
 
 func TestTranslateHandler6(t *testing.T) {
-	var serviceBackup = services
-
-	content := bytes.NewBufferString("Guten Morgen.")
+	content := bytes.NewBufferString("Whatever.")
 	req := httptest.NewRequest(http.MethodPost, "/", content)
 	req.Header.Set("Accept-Language", "en,fr")
 	req.Header.Set("Content-Language", "de")
 	rr := httptest.NewRecorder()
 
-	// Use this to load the package, so we can then reset the services list
-	translateHandler(rr, req)
-
-	services = &[]TranslateService{}
-	rr = httptest.NewRecorder()
-	translateHandler(rr, req)
+	translateHandler := TranslateHandler{}
+	translateHandler.ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusInternalServerError {
-		t.Error("translateHandler should reject requests when all services fail.")
+		t.Errorf("translateHandler should reject requests when all services fail: got %v want %v", rr.Code, http.StatusInternalServerError)
 	}
-
-	services = serviceBackup
 }
 
 func TestTranslateHandler7(t *testing.T) {
-	var serviceBackup = services
 	var buf bytes.Buffer
 	log.SetOutput(&buf)
 	defer func() {
 		log.SetOutput(os.Stderr)
 	}()
 
-	content := bytes.NewBufferString("Guten Morgen.")
+	content := bytes.NewBufferString("This is a different test.")
 	req := httptest.NewRequest(http.MethodPost, "/", content)
 	req.Header.Set("Accept-Language", "en,fr")
 	req.Header.Set("Content-Language", "de")
 	rr := httptest.NewRecorder()
 
 	// Use this to load the package, so we can then reset the services list
-	translateHandler(rr, req)
+	translateHandler := TranslateHandler{}
 
-	services = &[]TranslateService{
+	translateHandler = append(translateHandler,
 		TestProvider{
-			delay:   0,
 			failing: true,
+			delay:   time.Nanosecond,
 		},
-	}
-	rr = httptest.NewRecorder()
-	translateHandler(rr, req)
+	)
+	translateHandler.ServeHTTP(rr, req)
 
+	fmt.Println(buf.String())
 	if buf.Len() == 0 {
 		t.Error("translateHandler should log when a service fails.")
 	}
-
-	services = serviceBackup
 }
