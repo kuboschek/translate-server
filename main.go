@@ -1,11 +1,12 @@
 package main
 
 import (
-	"fmt"
-	"golang.org/x/text/language"
+	"context"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
+	"time"
 )
 
 const (
@@ -13,7 +14,12 @@ const (
 	serveAddr = "127.0.0.1"
 )
 
-var services []TranslateService
+var services = []TranslateService{
+	TestProvider{
+		failing: false,
+		delay:   time.Second * 2,
+	},
+}
 
 // Tries to load the cache from a file
 func init() {
@@ -28,34 +34,43 @@ func init() {
 	}
 }
 
-func translateHandler(response http.ResponseWriter, request *http.Request) {
-	// Get content language (Content-Language header)
-	contentLang := request.Header.Get("Content-Language")
-	tags, _, err := language.ParseAcceptLanguage(request.Header.Get("Accept-Language"))
+func main() {
+	http.HandleFunc("/", translateHandler)
+
+	srv := &http.Server{
+		Addr:         "0.0.0.0:8080",
+		Handler:      http.DefaultServeMux,
+		ReadTimeout:  time.Second * 10,
+		IdleTimeout:  time.Second * 10,
+		WriteTimeout: time.Second * 10,
+	}
+
+	gracefulStop := make(chan os.Signal, 1)
+	signal.Notify(gracefulStop, os.Interrupt, os.Kill)
+
+	log.Printf("Listening on %v", srv.Addr)
+	go func() {
+		if err := srv.ListenAndServe(); err != nil {
+			log.Println(err)
+		}
+	}()
+
+	<-gracefulStop
+	log.Println("Shutting down")
+	if file, err := os.OpenFile(cachePath, os.O_RDWR|os.O_CREATE, os.ModePerm); err != nil {
+		log.Printf("failed to open cache file: %v", err)
+	} else {
+		err = StoreCache(file)
+		if err != nil {
+			log.Printf("failed to save cache to file: %v", err)
+		}
+	}
+
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*5))
+	defer cancel()
+	err := srv.Shutdown(ctx)
 
 	if err != nil {
-		response.WriteHeader(http.StatusInternalServerError)
-		response.Write([]byte(err.Error()))
+		log.Printf("error shutting down: %v", err)
 	}
-
-	if contentLang == "" {
-		response.WriteHeader(http.StatusBadRequest)
-		response.Write([]byte("No content language specified"))
-	}
-
-	// Get target language (Accept-Language header)
-	if len(tags) < 1 {
-		response.WriteHeader(http.StatusBadRequest)
-		response.Write([]byte("No target language specified"))
-	} else {
-		// TODO(kuboschek): Call the first translate service, wait for results.
-		// If it fails, call the next in the row
-	}
-}
-
-func main() {
-	fmt.Println("Hello World!")
-
-	http.HandleFunc("/translate", translateHandler)
-	http.ListenAndServe(serveAddr, http.DefaultServeMux)
 }
