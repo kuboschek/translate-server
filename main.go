@@ -14,13 +14,6 @@ const (
 	serveAddr = "127.0.0.1"
 )
 
-var services = []TranslateService{
-	TestProvider{
-		failing: false,
-		delay:   time.Second * 2,
-	},
-}
-
 // Tries to load the cache from a file
 func init() {
 	file, err := os.OpenFile(cachePath, os.O_RDONLY, os.ModePerm)

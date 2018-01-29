@@ -34,6 +34,4 @@ func (p TestProvider) GetTranslation(givenPhrase, givenLang, targetLang string, 
 			translatedPhrase: givenPhrase,
 		}
 	}
-
-	close(*out)
 }

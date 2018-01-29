@@ -6,13 +6,12 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"time"
+	"os"
 )
 
 var services = &[]TranslateService{
-	TestProvider{
-		failing: false,
-		delay:   time.Second * 2,
+	GcloudProvider{
+		apiKey: os.Getenv("GOOGLE_API_KEY"),
 	},
 }
 
@@ -85,7 +84,7 @@ func translateHandler(response http.ResponseWriter, request *http.Request) {
 			return
 		}
 
-		log.Printf("failed to fetch translations: %v", err)
+		log.Printf("failed to fetch translations: %v", result.err.Error())
 	}
 
 	log.Printf("all services failed to translate \"%v\" (%v -> %v)", givenPhrase, contentLang, targetLanguage)
