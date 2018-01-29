@@ -18,6 +18,13 @@
 * With status `200 OK`, you'll get a translation back in the response body.
 * With any other status, check the response content to see what happened.
 
+### Using `cURL`
+    curl -X POST \
+    'http://localhost:8080/' \
+    -H 'accept-language: en' \
+    -H 'content-language: de' \
+    -d 'Also wirklich!'
+
 ## Design Decisions
 This section is just ideas - will be expanded in the future.
 ### Language
