@@ -13,5 +13,3 @@ type TranslateResult struct {
 type TranslateService interface {
 	GetTranslation(givenPhrase, givenLang, targetLang string, out *chan TranslateResult)
 }
-
-// TODO(lkuboschek): Write Mock API
