@@ -1,7 +1,7 @@
 package main
 
 import (
-	"encoding/gob"
+	"encoding/json"
 	"io"
 )
 
@@ -38,12 +38,12 @@ func GetTranslation(targetLang, sourcePhrase string) (targetPhrase *string) {
 
 // StoreCache writes the current phrase cache to the writer.
 func StoreCache(writer io.Writer) error {
-	enc := gob.NewEncoder(writer)
+	enc := json.NewEncoder(writer)
 	return enc.Encode(phraseMap)
 }
 
 // LoadCache reads the phrase cache from the reader.
 func LoadCache(reader io.Reader) error {
-	dec := gob.NewDecoder(reader)
+	dec := json.NewDecoder(reader)
 	return dec.Decode(&phraseMap)
 }

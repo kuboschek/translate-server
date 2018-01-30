@@ -115,6 +115,8 @@ func TestTranslateHandler6(t *testing.T) {
 	}
 }
 
+const cacheString = "This is a different test."
+
 func TestTranslateHandler7(t *testing.T) {
 	var buf bytes.Buffer
 	log.SetOutput(&buf)
@@ -122,15 +124,13 @@ func TestTranslateHandler7(t *testing.T) {
 		log.SetOutput(os.Stderr)
 	}()
 
-	content := bytes.NewBufferString("This is a different test.")
+	content := bytes.NewBufferString(cacheString)
 	req := httptest.NewRequest(http.MethodPost, "/", content)
 	req.Header.Set("Accept-Language", "en,fr")
 	req.Header.Set("Content-Language", "de")
 	rr := httptest.NewRecorder()
 
-	// Use this to load the package, so we can then reset the services list
 	translateHandler := TranslateHandler{}
-
 	translateHandler = append(translateHandler,
 		TestProvider{
 			failing: true,
@@ -142,5 +142,68 @@ func TestTranslateHandler7(t *testing.T) {
 	fmt.Println(buf.String())
 	if buf.Len() == 0 {
 		t.Error("translateHandler should log when a service fails.")
+	}
+}
+
+// TestTranslateHandler8 tests if caching returns correct results
+func TestTranslateHandler8(t *testing.T) {
+	content := bytes.NewBufferString(cacheString)
+	req := httptest.NewRequest(http.MethodPost, "/", content)
+	req.Header.Set("Accept-Language", "en,fr")
+	req.Header.Set("Content-Language", "de")
+	rr := httptest.NewRecorder()
+
+	translateHandler := TranslateHandler{}
+
+	// This fills the cache
+	translateHandler = append(translateHandler,
+		TestProvider{
+			failing: false,
+			delay:   time.Nanosecond,
+		},
+	)
+	translateHandler.ServeHTTP(rr, req)
+
+	// Empty the services list, so any cache miss will result in an error
+	translateHandler = TranslateHandler{}
+	rr = httptest.NewRecorder()
+	content = bytes.NewBufferString(cacheString)
+	req = httptest.NewRequest(http.MethodPost, "/", content)
+	req.Header.Set("Accept-Language", "en,fr")
+	req.Header.Set("Content-Language", "de")
+
+	translateHandler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Errorf("expected OK status: got %v want %v", rr.Code, http.StatusOK)
+	}
+
+	if rr.Body.String() != cacheString {
+		t.Errorf("caching should return previous results: got %v want %v", rr.Body.String(), cacheString)
+	}
+}
+
+func TestMoveToBack(t *testing.T) {
+	var services = TranslateHandler{
+		TestProvider{
+			failing: true,
+		},
+		TestProvider{
+			delay: time.Second * 123,
+		},
+	}
+
+	services.moveToBack(0)
+
+	if len(services) != 2 {
+		t.Errorf("moveToBack should not remove or add items. got len %v want len %v", len(services), 2)
+	}
+
+	if services[0].(TestProvider).delay != time.Second*123 {
+		t.Error("moveToBack should move the service with a given index to the back of the list.")
+	}
+
+	if services[1].(TestProvider).failing != true {
+		t.Error("moveToBack should move the specified service to the back of the list.")
 	}
 }

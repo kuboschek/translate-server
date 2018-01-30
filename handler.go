@@ -22,6 +22,15 @@ func writeResponse(w http.ResponseWriter, targetLanguage, targetPhrase string) {
 	io.WriteString(w, targetPhrase)
 }
 
+// moveToBack moves a service to the back of the list
+func (services TranslateHandler) moveToBack(index int) {
+	var movedService = services[index]
+
+	copy(services[index:], services[index+1:])
+	services[len(services)-1] = nil // or the zero value of T
+	services = append(services[:len(services)-1], movedService)
+}
+
 func (services TranslateHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
 	// Disallow anything but POST requests
 	if request.Method != http.MethodPost {
@@ -68,7 +77,7 @@ func (services TranslateHandler) ServeHTTP(response http.ResponseWriter, request
 	serviceResponse := make(chan TranslateResult)
 
 	// Go through all the services in order - return the first successful result
-	for _, svc := range services {
+	for index, svc := range services {
 		go svc.GetTranslation(givenPhrase, contentLang, targetLanguage, &serviceResponse)
 
 		// Wait for the response from the service
@@ -80,6 +89,8 @@ func (services TranslateHandler) ServeHTTP(response http.ResponseWriter, request
 			return
 		}
 
+		// Move the failing service to the end of the list
+		services.moveToBack(index)
 		log.Printf("failed to fetch translations: %v", result.err.Error())
 	}
 
