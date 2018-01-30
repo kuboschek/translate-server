@@ -13,7 +13,7 @@
 * Run the Docker: 
     
     `docker run -p 8080:8080 -e GOOGLE_API_KEY=$GOOGLE_API_KEY kuboschek/translate-server`
-    
+
 * Send HTTP `POST` requests to port `8080` of the machine or container this is running in.
     * Send the content to be translated as `text/plain` in the request body.
     * Use the `Content-Language` header to indicate what language to translate from.
@@ -39,8 +39,9 @@ This section is just ideas - will be expanded in the future.
 * Two-stage map
     * Simple to use in Go
     * Internally it's a hashmap, and thus fast
+    * Not storing source language, since phrases themselves are more distinct anyways
 
-* TODO Persist with JSON
+* Persists using JSON
     * Allows for pre-filling of manually curated translations
     * Allows for cache sharing between multiple implementations
 
@@ -52,7 +53,7 @@ This section is just ideas - will be expanded in the future.
 ### Request Handler
 * Doesn't care which backends it uses
 * Fails over from one to the next
-* TODO Moves failing backends to end of list
+* Moves failing services to the end of the list
 
 ### Client Interface
 * Uses standard HTTP headers -> compatible with many things already

@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	cachePath = "cache.gob"
+	cachePath = "cache.json"
 	serveAddr = "127.0.0.1"
 )
 
