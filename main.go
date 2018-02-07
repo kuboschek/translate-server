@@ -27,6 +27,13 @@ func init() {
 		})
 	}
 
+	enableMock := os.Getenv("ENABLE_MOCK")
+	if enableMock != "" {
+		translateHandler.Services = append(translateHandler.Services, upstream.Mock{
+			Failing: true,
+		})
+	}
+
 	if len(translateHandler.Services) == 0 {
 		err := errors.New("no translation backends active, exiting")
 		log.Fatal(err)
