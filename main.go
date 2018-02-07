@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"errors"
+	"github.com/kuboschek/translate-server/cache"
+	"github.com/kuboschek/translate-server/upstream"
 	"log"
 	"net/http"
 	"os"
@@ -10,41 +12,31 @@ import (
 	"time"
 )
 
-const (
-	cachePath = "cache.json"
-	serveAddr = "127.0.0.1"
-)
+var translateHandler TranslateHandler
 
-var theHandler = make(TranslateHandler, 0)
-
-// Tries to load the cache from a file
+// init adcs translation handlers based on the environment variables present
 func init() {
-	file, err := os.OpenFile(cachePath, os.O_RDONLY, os.ModePerm)
-	if err != nil {
-		log.Printf("could not load cache file: %v", err)
-		return
+	translateHandler = TranslateHandler{
+		Cache: cache.Memory,
 	}
 
-	if err = LoadCache(file); err != nil {
-		log.Printf("could not decode cache file: %v", err)
-	}
-
-	gkey := os.Getenv("GOOGLE_API_KEY")
-	if gkey != "" {
-		theHandler = append(theHandler, GcloudProvider{
-			apiKey: gkey,
+	googleKey := os.Getenv("GOOGLE_API_KEY")
+	if googleKey != "" {
+		translateHandler.Services = append(translateHandler.Services, upstream.GoogleProvider{
+			Key: googleKey,
 		})
 	}
 
-	if len(theHandler) == 0 {
+	if len(translateHandler.Services) == 0 {
 		err := errors.New("no translation backends active, exiting")
 		log.Fatal(err)
 	}
 }
 
 func main() {
-	http.Handle("/", theHandler)
+	http.Handle("/", translateHandler)
 
+	// Setting timeouts here to mitigate certain Denial-of-Service attacks
 	srv := &http.Server{
 		Addr:         "0.0.0.0:8080",
 		Handler:      http.DefaultServeMux,
@@ -65,14 +57,6 @@ func main() {
 
 	<-gracefulStop
 	log.Println("Shutting down")
-	if file, err := os.OpenFile(cachePath, os.O_RDWR|os.O_CREATE, os.ModePerm); err != nil {
-		log.Printf("failed to open cache file: %v", err)
-	} else {
-		err = StoreCache(file)
-		if err != nil {
-			log.Printf("failed to save cache to file: %v", err)
-		}
-	}
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(time.Second*5))
 	defer cancel()

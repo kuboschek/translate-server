@@ -3,6 +3,9 @@ package main
 import (
 	"bytes"
 	"fmt"
+	"github.com/kuboschek/translate-server/cache"
+	"github.com/kuboschek/translate-server/upstream"
+	"golang.org/x/text/language"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -13,23 +16,26 @@ import (
 
 const (
 	testContent = "testContent"
-	testLang    = "testLang"
+)
+
+var (
+	testLang = language.Und
 )
 
 func TestWriteResponse(t *testing.T) {
 	rr := httptest.NewRecorder()
-	writeResponse(rr, testLang, testContent)
+	writeSuccess(rr, testLang, testContent)
 
 	if rr.Body.String() != testContent {
-		t.Error("writeResponse should write exactly the given phrase to the output.")
+		t.Error("writeSuccess should write exactly the given phrase to the output.")
 	}
 
-	if rr.Header().Get("Content-Language") != testLang {
-		t.Error("writeResponse should set the Content-Language header.")
+	if rr.Header().Get("Content-Language") != testLang.String() {
+		t.Error("writeSuccess should set the Content-Language header.")
 	}
 
 	if rr.Header().Get("Content-Type") != "text/plain" {
-		t.Error("writeResponse should set the Content-Type header.")
+		t.Error("writeSuccess should set the Content-Type header.")
 	}
 }
 func TestTranslateHandler(t *testing.T) {
@@ -52,7 +58,7 @@ func TestTranslateHandler2(t *testing.T) {
 	translateHandler := TranslateHandler{}
 	translateHandler.ServeHTTP(rr, req)
 
-	if rr.Code != http.StatusInternalServerError {
+	if rr.Code != http.StatusBadRequest {
 		t.Error("translateHandler should reject malformed Accept-Language headers.")
 	}
 }
@@ -91,7 +97,10 @@ func TestTranslateHandler5(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	translateHandler := TranslateHandler{
-		TestProvider{},
+		[]upstream.Service{
+			upstream.Mock{},
+		},
+		nil,
 	}
 	translateHandler.ServeHTTP(rr, req)
 
@@ -110,8 +119,8 @@ func TestTranslateHandler6(t *testing.T) {
 	translateHandler := TranslateHandler{}
 	translateHandler.ServeHTTP(rr, req)
 
-	if rr.Code != http.StatusInternalServerError {
-		t.Errorf("translateHandler should reject requests when all services fail: got %v want %v", rr.Code, http.StatusInternalServerError)
+	if rr.Code != http.StatusBadGateway {
+		t.Errorf("translateHandler should reject requests when all services fail: got %v want %v", rr.Code, http.StatusBadGateway)
 	}
 }
 
@@ -130,18 +139,18 @@ func TestTranslateHandler7(t *testing.T) {
 	req.Header.Set("Content-Language", "de")
 	rr := httptest.NewRecorder()
 
-	translateHandler := TranslateHandler{}
-	translateHandler = append(translateHandler,
-		TestProvider{
-			failing: true,
-			delay:   time.Nanosecond,
+	handler := TranslateHandler{}
+	handler.Services = append(handler.Services,
+		upstream.Mock{
+			Failing: true,
+			Delay:   time.Nanosecond,
 		},
 	)
-	translateHandler.ServeHTTP(rr, req)
+	handler.ServeHTTP(rr, req)
 
 	fmt.Println(buf.String())
 	if buf.Len() == 0 {
-		t.Error("translateHandler should log when a service fails.")
+		t.Error("TranslateHandler should log when a service fails.")
 	}
 }
 
@@ -153,26 +162,28 @@ func TestTranslateHandler8(t *testing.T) {
 	req.Header.Set("Content-Language", "de")
 	rr := httptest.NewRecorder()
 
-	translateHandler := TranslateHandler{}
-
-	// This fills the cache
-	translateHandler = append(translateHandler,
-		TestProvider{
-			failing: false,
-			delay:   time.Nanosecond,
+	handler := TranslateHandler{
+		[]upstream.Service{
+			upstream.Mock{
+				Failing: false,
+				Delay:   0,
+			},
 		},
-	)
-	translateHandler.ServeHTTP(rr, req)
+		cache.Memory,
+	}
+	handler.ServeHTTP(rr, req)
 
 	// Empty the services list, so any cache miss will result in an error
-	translateHandler = TranslateHandler{}
+	handler = TranslateHandler{
+		Cache: cache.Memory,
+	}
 	rr = httptest.NewRecorder()
 	content = bytes.NewBufferString(cacheString)
 	req = httptest.NewRequest(http.MethodPost, "/", content)
 	req.Header.Set("Accept-Language", "en,fr")
 	req.Header.Set("Content-Language", "de")
 
-	translateHandler.ServeHTTP(rr, req)
+	handler.ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusOK {
 		t.Errorf("expected OK status: got %v want %v", rr.Code, http.StatusOK)
@@ -184,26 +195,29 @@ func TestTranslateHandler8(t *testing.T) {
 }
 
 func TestMoveToBack(t *testing.T) {
-	var services = TranslateHandler{
-		TestProvider{
-			failing: true,
+	var handler = TranslateHandler{
+		[]upstream.Service{
+			upstream.Mock{
+				Failing: true,
+			},
+			upstream.Mock{
+				Delay: time.Second * 123,
+			},
 		},
-		TestProvider{
-			delay: time.Second * 123,
-		},
+		nil,
 	}
 
-	services.moveToBack(0)
+	handler.moveToBack(0)
 
-	if len(services) != 2 {
-		t.Errorf("moveToBack should not remove or add items. got len %v want len %v", len(services), 2)
+	if len(handler.Services) != 2 {
+		t.Errorf("moveToBack should not remove or add items. got len %v want len %v", len(handler.Services), 2)
 	}
 
-	if services[0].(TestProvider).delay != time.Second*123 {
+	if handler.Services[0].(upstream.Mock).Delay != time.Second*123 {
 		t.Error("moveToBack should move the service with a given index to the back of the list.")
 	}
 
-	if services[1].(TestProvider).failing != true {
+	if handler.Services[1].(upstream.Mock).Failing != true {
 		t.Error("moveToBack should move the specified service to the back of the list.")
 	}
 }
