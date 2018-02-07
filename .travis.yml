@@ -1,3 +1,7 @@
-  language: go
-  go:
-    - 1.x
+language: go
+go:
+  - 1.8.x
+  - 1.9.x
+
+env:
+  - ENABLE_MOCK=yes
