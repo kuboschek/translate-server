@@ -8,7 +8,10 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"time"
 )
+
+const timeout = time.Second * 5
 
 // TranslateHandler is an HTTP handler that proxies translation requests to upstream providers.
 //
@@ -89,21 +92,27 @@ func (h TranslateHandler) ServeHTTP(response http.ResponseWriter, request *http.
 	for index, svc := range h.Services {
 		go svc.Translate(givenPhrase, contentLanguage, targetLanguage, &serviceResponse)
 
-		// Wait for the response from the service
-		result := <-serviceResponse
+		// Wait for the response from the service for a specified time
+		select {
+			case result := <-serviceResponse:
+				if result.Error == nil {
+					if h.Cache != nil {
+						h.Cache.Put(result.GivenPhrase, result.TargetLang, result.TranslatedPhrase)
+					}
 
-		if result.Error == nil {
-			if h.Cache != nil {
-				h.Cache.Put(result.GivenPhrase, result.TargetLang, result.TranslatedPhrase)
-			}
+					writeSuccess(response, result.TargetLang, result.TranslatedPhrase)
+					return
+				}
+				// Move the failing service to the end of the list
+				h.moveToBack(index)
+				log.Printf("failed to fetch translations: %v", result.Error)
 
-			writeSuccess(response, result.TargetLang, result.TranslatedPhrase)
-			return
+				break
+
+			case <- time.After(timeout):
+				log.Printf("upstream service timed out after: %v", timeout)
+				break
 		}
-
-		// Move the failing service to the end of the list
-		h.moveToBack(index)
-		log.Printf("failed to fetch translations: %v", result.Error)
 	}
 
 	log.Printf("all services failed to translate \"%v\" (%v -> %v)", givenPhrase, contentLanguage, targetLanguage)
