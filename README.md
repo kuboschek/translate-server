@@ -1,5 +1,5 @@
-[![Travis](https://img.shields.io/travis/kuboschek/translate-server.svg)]()
-[![Docker Build Status](https://img.shields.io/docker/build/kuboschek/translate-server.svg)]()
+[![Travis](https://img.shields.io/travis/kuboschek/translate-server.svg)](https://travis-ci.org/kuboschek/translate-server)
+[![Docker Build Status](https://img.shields.io/docker/build/kuboschek/translate-server.svg)](https://hub.docker.com/r/kuboschek/translate-server/)
 # Translate Server
 
 ## The Problem
