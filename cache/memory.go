@@ -8,8 +8,9 @@ import (
 type memoryCache map[string]map[language.Tag]string
 
 var (
+	// Memory is an instance of an in-memory cache.
 	Memory         memoryCache
-	phraseNotFound   = errors.New("phrase not found in memory cache")
+	phraseNotFound = errors.New("phrase not found in memory cache")
 )
 
 func init() {

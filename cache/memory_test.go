@@ -1,8 +1,8 @@
 package cache
 
 import (
-	"testing"
 	"golang.org/x/text/language"
+	"testing"
 )
 
 // Sample text constants for testing
@@ -17,8 +17,6 @@ var (
 	de = language.German
 	en = language.English
 )
-
-
 
 func TestAddTranslation(t *testing.T) {
 	Memory.Put(testDe, en, testEn)
