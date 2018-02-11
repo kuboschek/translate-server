@@ -94,24 +94,24 @@ func (h TranslateHandler) ServeHTTP(response http.ResponseWriter, request *http.
 
 		// Wait for the response from the service for a specified time
 		select {
-			case result := <-serviceResponse:
-				if result.Error == nil {
-					if h.Cache != nil {
-						h.Cache.Put(result.GivenPhrase, result.TargetLang, result.TranslatedPhrase)
-					}
-
-					writeSuccess(response, result.TargetLang, result.TranslatedPhrase)
-					return
+		case result := <-serviceResponse:
+			if result.Error == nil {
+				if h.Cache != nil {
+					h.Cache.Put(result.GivenPhrase, result.TargetLang, result.TranslatedPhrase)
 				}
-				// Move the failing service to the end of the list
-				h.moveToBack(index)
-				log.Printf("failed to fetch translations: %v", result.Error)
 
-				break
+				writeSuccess(response, result.TargetLang, result.TranslatedPhrase)
+				return
+			}
+			// Move the failing service to the end of the list
+			h.moveToBack(index)
+			log.Printf("failed to fetch translations: %v", result.Error)
 
-			case <- time.After(timeout):
-				log.Printf("upstream service timed out after: %v", timeout)
-				break
+			break
+
+		case <-time.After(timeout):
+			log.Printf("upstream service timed out after: %v", timeout)
+			break
 		}
 	}
 

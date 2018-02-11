@@ -1,4 +1,3 @@
-
 // Package upstream provides implementations for upstream translation services.
 package upstream
 
