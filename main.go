@@ -1,3 +1,6 @@
+// translate-server is a caching text translation server.
+// Supports pluggable upstream and cache backends.
+// Fails over when upstreams return errors.
 package main
 
 import (
@@ -14,7 +17,7 @@ import (
 
 var translateHandler TranslateHandler
 
-// init adcs translation handlers based on the environment variables present
+// init adds translation handlers based on the environment variables present
 func init() {
 	translateHandler = TranslateHandler{
 		Cache: cache.Memory,
@@ -22,7 +25,7 @@ func init() {
 
 	googleKey := os.Getenv("GOOGLE_API_KEY")
 	if googleKey != "" {
-		translateHandler.Services = append(translateHandler.Services, upstream.GoogleProvider{
+		translateHandler.Services = append(translateHandler.Services, upstream.Google{
 			Key: googleKey,
 		})
 	}
