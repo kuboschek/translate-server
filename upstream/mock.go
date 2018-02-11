@@ -2,19 +2,19 @@ package upstream
 
 import (
 	"errors"
+	"golang.org/x/text/language"
 	"log"
 	"time"
-	"golang.org/x/text/language"
 )
 
-// Mock is an implementation for unit testing
+// Mock is an implementation used to test error handling behaviour.
 type Mock struct {
 	Failing bool
 	Delay   time.Duration
 }
 
-// Translate returns an error if Failing flag is set, otherwise, simply returns the original string
-// If Delay is set to non-zero values, waits for the given time
+// Translate returns an error if Failing flag is set. Otherwise, simply returns the original string.
+// If Delay is set to non-zero values, waits for the given time before responding.
 func (p Mock) Translate(givenPhrase string, givenLang, targetLang language.Tag, out *chan Result) {
 	log.Printf("Mock (%#v) got request: \"%v\" (%v -> %v)", p, givenPhrase, givenLang, targetLang)
 
