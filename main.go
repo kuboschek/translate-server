@@ -30,6 +30,13 @@ func init() {
 		})
 	}
 
+	bingKey := os.Getenv("BING_API_KEY")
+	if bingKey != "" {
+		translateHandler.Services = append(translateHandler.Services, upstream.Bing{
+			ServiceKey: bingKey,
+		})
+	}
+
 	enableMock := os.Getenv("ENABLE_MOCK")
 	if enableMock != "" {
 		translateHandler.Services = append(translateHandler.Services, upstream.Mock{
