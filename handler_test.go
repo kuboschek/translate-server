@@ -195,6 +195,7 @@ func TestTranslateHandler8(t *testing.T) {
 }
 
 func TestMoveToBack(t *testing.T) {
+
 	var handler = TranslateHandler{
 		[]upstream.Service{
 			upstream.Mock{
@@ -219,5 +220,28 @@ func TestMoveToBack(t *testing.T) {
 
 	if handler.Services[1].(upstream.Mock).Failing != true {
 		t.Error("moveToBack should move the specified service to the back of the list.")
+	}
+}
+
+func TestTimeOut(t *testing.T) {
+	content := bytes.NewBufferString(cacheString)
+	req := httptest.NewRequest(http.MethodPost, "/", content)
+	req.Header.Set("Accept-Language", "en,fr")
+	req.Header.Set("Content-Language", "de")
+	rr := httptest.NewRecorder()
+
+	var handler = TranslateHandler{
+		[]upstream.Service{
+			upstream.Mock{
+				Delay: time.Second * 123,
+			},
+		},
+		nil,
+	}
+
+	handler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusBadGateway {
+		t.Error("handler should return a 502 when upstream services time out")
 	}
 }
