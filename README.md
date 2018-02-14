@@ -48,6 +48,13 @@ Upstream credentials are passed as environment variables. Currently, there are t
  * `GOOGLE_API_KEY`: If specified, enable the Google Cloud Translation backend with given key.
  * `ENABLE_MOCK`: If specified, enables the mock backend. This is used for testing upstream failure handling.
 
+### Testing Strategy
+
+* The cache package is fully unit tested. It plays a part in every request and is critical to reducing upstream load.
+* `handler.go` has full coverage as well. It handles every request, making it a critical piece of code.
+* `sanity_test.go` contains tests running `gofmt` and `govet`. Code is more often read than written, so this was a
+no-brainer.
+
 ## HTTP Interface
 
 The server accepts HTTP `POST` requests to port 8080, the path is `/`.
