@@ -1,39 +1,43 @@
 package upstream
 
 import (
-	"golang.org/x/text/language"
-	"net/url"
-	"net/http"
 	"bytes"
-	"github.com/pkg/errors"
-	"log"
 	"encoding/xml"
+	"github.com/pkg/errors"
+	"golang.org/x/text/language"
+	"log"
+	"net/http"
+	"net/url"
 )
 
 const (
-	bingAPIBase = "https://api.microsofttranslator.com/v2/Http.svc/Translate"
+	azureAPIBase = "https://api.microsofttranslator.com/v2/Http.svc/Translate"
 )
 
-var bingBaseURL *url.URL
+var azureBaseURL *url.URL
 
-type Bing struct {
+// Azure represents a translation service calling the Azure Cognitive Services Machine Translation Service.
+type Azure struct {
+	// ServiceKey is the key from the Azure dashboard
 	ServiceKey string
 }
 
 type bingResult struct {
+	// Translated is the translation content as returned from Azure
 	Translated string `xml:",chardata"`
 }
 
 func init() {
 	var err error
-	bingBaseURL, err = url.Parse(bingAPIBase)
+	azureBaseURL, err = url.Parse(azureAPIBase)
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (b Bing) Translate(givenPhrase string, givenLang, targetLang language.Tag, out *chan Result) {
-	requestURL := *bingBaseURL
+// Translate call Microsoft Cognitive Services to translate the given string
+func (b Azure) Translate(givenPhrase string, givenLang, targetLang language.Tag, out *chan Result) {
+	requestURL := *azureBaseURL
 	requestURL.RawQuery = "from=" + url.QueryEscape(givenLang.String()) + "&to=" + url.QueryEscape(targetLang.String()) + "&text=" + url.QueryEscape(givenPhrase)
 
 	request, err := http.NewRequest(http.MethodGet, requestURL.String(), nil)
@@ -43,10 +47,8 @@ func (b Bing) Translate(givenPhrase string, givenLang, targetLang language.Tag, 
 		*out <- Result{
 			Error: err,
 		}
-		close(*out)
 		return
 	}
-
 
 	response, err := http.DefaultClient.Do(request)
 	if err != nil {
@@ -61,7 +63,7 @@ func (b Bing) Translate(givenPhrase string, givenLang, targetLang language.Tag, 
 	content := buf.String()
 
 	if response.StatusCode != http.StatusOK {
-		log.Printf("bing API returned error: %v", content)
+		log.Printf("Azure API returned error: %v", content)
 		*out <- Result{
 			Error: errors.New(response.Status),
 		}
@@ -77,9 +79,9 @@ func (b Bing) Translate(givenPhrase string, givenLang, targetLang language.Tag, 
 	}
 
 	*out <- Result{
-		GivenLang:givenLang,
-		GivenPhrase:givenPhrase,
-		TargetLang:targetLang,
+		GivenLang:        givenLang,
+		GivenPhrase:      givenPhrase,
+		TargetLang:       targetLang,
 		TranslatedPhrase: result.Translated,
 	}
 }
