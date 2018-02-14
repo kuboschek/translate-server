@@ -55,6 +55,14 @@ func (h TranslateHandler) ServeHTTP(response http.ResponseWriter, request *http.
 		return
 	}
 
+	// Check that a target language has been sent in the request
+	if len(tags) < 1 {
+		response.WriteHeader(http.StatusBadRequest)
+		response.Write([]byte("No Accept-Language header specified\n"))
+		return
+	}
+	targetLanguage := tags[0]
+
 	// Get given language (Content-Language header)
 	contentLanguage, err := language.Parse(request.Header.Get("Content-Language"))
 
@@ -64,20 +72,12 @@ func (h TranslateHandler) ServeHTTP(response http.ResponseWriter, request *http.
 		return
 	}
 
-	// Get target language (Accept-Language header)
-	if len(tags) < 1 {
-		response.WriteHeader(http.StatusBadRequest)
-		response.Write([]byte("No Accept-Language header specified\n"))
-		return
-	}
-
+	// Get phrase to be translated
 	buf := new(bytes.Buffer)
 	buf.ReadFrom(request.Body)
 	givenPhrase := buf.String()
 
-	targetLanguage := tags[0]
-
-	// Check for a cached response
+	// Check for a cached response, if a cache is available
 	if h.Cache != nil {
 		cached, err := h.Cache.Get(givenPhrase, targetLanguage)
 		if err == nil {
@@ -96,13 +96,21 @@ func (h TranslateHandler) ServeHTTP(response http.ResponseWriter, request *http.
 		select {
 		case result := <-serviceResponse:
 			if result.Error == nil {
+
+				// Store translation in cache asynchronously
 				if h.Cache != nil {
-					h.Cache.Put(result.GivenPhrase, result.TargetLang, result.TranslatedPhrase)
+					go func() {
+						err := h.Cache.Put(result.GivenPhrase, result.TargetLang, result.TranslatedPhrase)
+						if err != nil {
+							log.Printf("failed to store translation in cache: %v", err)
+						}
+					}()
 				}
 
 				writeSuccess(response, result.TargetLang, result.TranslatedPhrase)
 				return
 			}
+
 			// Move the failing service to the end of the list
 			h.moveToBack(index)
 			log.Printf("failed to fetch translations: %v", result.Error)
@@ -110,6 +118,8 @@ func (h TranslateHandler) ServeHTTP(response http.ResponseWriter, request *http.
 			break
 
 		case <-time.After(timeout):
+			// Also move a service back in the list if it times out
+			h.moveToBack(index)
 			log.Printf("upstream service timed out after: %v", timeout)
 			break
 		}
