@@ -50,7 +50,8 @@ func TestTranslateHandler(t *testing.T) {
 	}
 }
 
-func TestTranslateHandler2(t *testing.T) {
+// TestRejectMalformedAcceptLanguage checks that the handler rejects malformed Accept-Language headers
+func TestRejectMalformedAcceptLanguage(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	req.Header.Set("Accept-Language", "en;q=1.2.3")
 	rr := httptest.NewRecorder()
@@ -63,7 +64,8 @@ func TestTranslateHandler2(t *testing.T) {
 	}
 }
 
-func TestTranslateHandler3(t *testing.T) {
+// TestRejectMissingContentLanguage checks that the handler requires a Content-Language header
+func TestRejectMissingContentLanguage(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	req.Header.Set("Accept-Language", "en,fr")
 	rr := httptest.NewRecorder()
@@ -76,7 +78,8 @@ func TestTranslateHandler3(t *testing.T) {
 	}
 }
 
-func TestTranslateHandler4(t *testing.T) {
+// TestRequireAcceptLanguageHeader checks that the handler requires an Accept-Language header
+func TestRequireAcceptLanguageHeader(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/", nil)
 	req.Header.Set("Content-Language", "fr")
 	rr := httptest.NewRecorder()
@@ -89,7 +92,9 @@ func TestTranslateHandler4(t *testing.T) {
 	}
 }
 
-func TestTranslateHandler5(t *testing.T) {
+// TestSuccessResponse checks if well-formed requests return correct results
+// when using a functioning upstream
+func TestSuccessResponse(t *testing.T) {
 	content := bytes.NewBufferString("Guten Morgen.")
 	req := httptest.NewRequest(http.MethodPost, "/", content)
 	req.Header.Set("Accept-Language", "en,fr")
@@ -109,7 +114,8 @@ func TestTranslateHandler5(t *testing.T) {
 	}
 }
 
-func TestTranslateHandler6(t *testing.T) {
+// TestAllUpstreamFailure checks if a 502 is returned when all upstreams fail
+func TestAllUpstreamFailure(t *testing.T) {
 	content := bytes.NewBufferString("Whatever.")
 	req := httptest.NewRequest(http.MethodPost, "/", content)
 	req.Header.Set("Accept-Language", "en,fr")
@@ -126,7 +132,8 @@ func TestTranslateHandler6(t *testing.T) {
 
 const cacheString = "This is a different test."
 
-func TestTranslateHandler7(t *testing.T) {
+// TestLogOnFailure checks if the handler logs on upstream errors
+func TestLogOnFailure(t *testing.T) {
 	var buf bytes.Buffer
 	log.SetOutput(&buf)
 	defer func() {
@@ -154,8 +161,8 @@ func TestTranslateHandler7(t *testing.T) {
 	}
 }
 
-// TestTranslateHandler8 tests if caching returns correct results
-func TestTranslateHandler8(t *testing.T) {
+// TestCachedResponseCorrect tests if caching returns correct results
+func TestCachedResponseCorrect(t *testing.T) {
 	content := bytes.NewBufferString(cacheString)
 	req := httptest.NewRequest(http.MethodPost, "/", content)
 	req.Header.Set("Accept-Language", "en,fr")
@@ -183,6 +190,9 @@ func TestTranslateHandler8(t *testing.T) {
 	req.Header.Set("Accept-Language", "en,fr")
 	req.Header.Set("Content-Language", "de")
 
+	// Wait here to allow the async cache write to finish
+	time.Sleep(time.Second)
+
 	handler.ServeHTTP(rr, req)
 
 	if rr.Code != http.StatusOK {
@@ -194,6 +204,8 @@ func TestTranslateHandler8(t *testing.T) {
 	}
 }
 
+// TestMoveToBack checks if the handler's moveToBack method moves a service
+// to the end of the list
 func TestMoveToBack(t *testing.T) {
 
 	var handler = TranslateHandler{
@@ -223,6 +235,7 @@ func TestMoveToBack(t *testing.T) {
 	}
 }
 
+// TestTimeOut checks if the handler times out after a certain time
 func TestTimeOut(t *testing.T) {
 	content := bytes.NewBufferString(cacheString)
 	req := httptest.NewRequest(http.MethodPost, "/", content)
