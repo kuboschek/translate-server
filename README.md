@@ -55,6 +55,13 @@ Upstream credentials are passed as environment variables. Currently, there are t
 * `sanity_test.go` contains tests running `gofmt` and `govet`. Code is more often read than written, so this was a
 no-brainer.
 
+## About The Author
+My name is Leonhard Kuboschek. This code uses libraries written by many people. Thank you. All code contained within
+this repository was authored solely by me. I'm currently working full-time at a startup (50 hrs / week),
+and we have a launch coming up. Thus I've been working on this after hours, and on the weekends only.
+
+ * [Personal Homepage](http://kuboschek.me)
+
 ## HTTP Interface
 
 The server accepts HTTP `POST` requests to port 8080, the path is `/`.
@@ -82,10 +89,3 @@ misuse. If you would like to receive testing credentials, please send me an emai
 
 ## Docker Image
     `docker run -p 8080:8080 -e GOOGLE_API_KEY=$GOOGLE_API_KEY kuboschek/translate-server`
-
-
-## About The Author
-My name is Leonhard Kuboschek. This code uses libraries written by many people. Thank you. All code contained within
-this repository was authored solely by me.
-
- * [Personal Homepage](http://kuboschek.me)
