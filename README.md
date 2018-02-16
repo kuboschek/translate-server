@@ -21,6 +21,7 @@ Currently, there is only a backend implementation. Furthermore, there is current
 and no expiry timer for cached items.
 
 Future improvements planned are:
+ * Integration tests for upstreams
  * Concurrently calling multiple upstreams
  * Implement an authorization mechanism for clients
  * Enabling load-balancing to multiple upstreams / expanding failover options
