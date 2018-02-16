@@ -59,6 +59,7 @@ no-brainer.
 My name is Leonhard Kuboschek. This code uses libraries written by many people. Thank you. All code contained within
 this repository was authored solely by me. I'm currently working full-time at a startup (50 hrs / week),
 and we have a launch coming up. Thus I've been working on this after hours, and on the weekends only.
+Additionally, this is one of my earlier projects utilizing Go as a language.
 
  * [Personal Homepage](http://kuboschek.me)
 
