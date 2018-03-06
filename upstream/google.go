@@ -7,14 +7,15 @@ import (
 	"google.golang.org/api/option"
 )
 
-// GoogleProvider is a Service that
-type GoogleProvider struct {
+// Google is a upstream.Service implementation that uses Google Cloud Translation.
+type Google struct {
+	// Personal Access Token, as granted by Google.
 	Key    string
 	client *translate.Client
 }
 
 // makeGoogleClient sets up the Google Translation Client library
-func (p *GoogleProvider) makeGoogleClient() error {
+func (p *Google) makeGoogleClient() error {
 	client, err := translate.NewClient(context.Background(), option.WithAPIKey(p.Key))
 	if err != nil {
 		return err
@@ -30,9 +31,9 @@ func sendError(out *chan Result, err error) {
 	}
 }
 
-// Translate translates the given text using the Google Cloud Translation API
+// Translate translates the given text using the Google Cloud Translation API.
 // The translation result is sent to channel out.
-func (p GoogleProvider) Translate(givenPhrase string, givenLang, targetLang language.Tag, out *chan Result) {
+func (p Google) Translate(givenPhrase string, givenLang, targetLang language.Tag, out *chan Result) {
 	if p.client == nil {
 		err := p.makeGoogleClient()
 		if err != nil {

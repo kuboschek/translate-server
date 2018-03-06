@@ -1,8 +1,8 @@
 package cache
 
 import (
-	"testing"
 	"golang.org/x/text/language"
+	"testing"
 )
 
 // Sample text constants for testing
@@ -18,8 +18,7 @@ var (
 	en = language.English
 )
 
-
-
+// TestAddTranslation tests the Put method of the memory cache
 func TestAddTranslation(t *testing.T) {
 	Memory.Put(testDe, en, testEn)
 	Memory.Put(testDe, de, testFr)
@@ -33,9 +32,15 @@ func TestAddTranslation(t *testing.T) {
 	}
 }
 
+// TestGetTranslation tests the Get method of the memory cache
 func TestGetTranslation(t *testing.T) {
 	Memory[testFr] = map[language.Tag]string{
 		de: testDe,
+	}
+
+	has := Memory.Has(testFr, de)
+	if !has {
+		t.Error("Has returned false, but translation is present.")
 	}
 
 	result, err := Memory.Get(testFr, de)

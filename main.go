@@ -1,3 +1,6 @@
+// translate-server is a caching text translation server.
+// Supports pluggable upstream and cache backends.
+// Fails over when upstreams return errors or take too long.
 package main
 
 import (
@@ -14,19 +17,29 @@ import (
 
 var translateHandler TranslateHandler
 
-// init adcs translation handlers based on the environment variables present
+// init adds translation handlers based on the environment variables present
 func init() {
 	translateHandler = TranslateHandler{
 		Cache: cache.Memory,
 	}
 
+	// Enable the Google backend if a key is given
 	googleKey := os.Getenv("GOOGLE_API_KEY")
 	if googleKey != "" {
-		translateHandler.Services = append(translateHandler.Services, upstream.GoogleProvider{
+		translateHandler.Services = append(translateHandler.Services, upstream.Google{
 			Key: googleKey,
 		})
 	}
 
+	// Enable the Bing backend if a key is given
+	bingKey := os.Getenv("BING_API_KEY")
+	if bingKey != "" {
+		translateHandler.Services = append(translateHandler.Services, upstream.Azure{
+			ServiceKey: bingKey,
+		})
+	}
+
+	// This is useful for testing, enables a failing mock backend
 	enableMock := os.Getenv("ENABLE_MOCK")
 	if enableMock != "" {
 		translateHandler.Services = append(translateHandler.Services, upstream.Mock{
@@ -34,6 +47,9 @@ func init() {
 		})
 	}
 
+	// If nothing is enabled, all requests would immediately fail
+	// Shutting down immediately makes the configuration error more
+	// observable
 	if len(translateHandler.Services) == 0 {
 		err := errors.New("no translation backends active, exiting")
 		log.Fatal(err)
@@ -52,6 +68,7 @@ func main() {
 		WriteTimeout: time.Second * 10,
 	}
 
+	// Setting up a signal listener to allow for controlled shutdown
 	gracefulStop := make(chan os.Signal, 1)
 	signal.Notify(gracefulStop, os.Interrupt, os.Kill)
 
@@ -62,6 +79,7 @@ func main() {
 		}
 	}()
 
+	// Async shutdown allows ongoing requests to finish
 	<-gracefulStop
 	log.Println("Shutting down")
 
