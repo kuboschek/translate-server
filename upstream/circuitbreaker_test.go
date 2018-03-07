@@ -1,9 +1,9 @@
 package upstream
 
 import (
-	"testing"
 	"github.com/rubyist/circuitbreaker"
 	"golang.org/x/text/language"
+	"testing"
 	"time"
 )
 
@@ -19,7 +19,7 @@ func TestCircuitBreaker_TranslateWorking(t *testing.T) {
 	go wrapper.Translate(testPhrase, language.German, language.English, &out)
 
 	select {
-	case result := <- out:
+	case result := <-out:
 		if result.Error != nil {
 			t.Error("circuitbreaker returned error when it shouldn't have")
 		}
@@ -27,11 +27,11 @@ func TestCircuitBreaker_TranslateWorking(t *testing.T) {
 		if result.TranslatedPhrase != testPhrase {
 			t.Error("circuitbreaker returned incorrect result: want %v, got %v", testPhrase, result.TranslatedPhrase)
 		}
-		break;
+		break
 
 	case <-time.After(time.Second):
 		t.Error("operation timed out when it should have returned")
-		break;
+		break
 	}
 }
 
@@ -53,11 +53,11 @@ func TestCircuitBreaker_TranslateTripped(t *testing.T) {
 		if result.Error == nil {
 			t.Error("circuitbreaker returned no error when it should have")
 		}
-		break;
+		break
 
 	case <-time.After(time.Second):
 		t.Error("operation timed out when it should have returned")
-		break;
+		break
 	}
 
 	breaker.Reset()
@@ -73,15 +73,15 @@ func TestCircuitBreaker_TranslateHandlerNil(t *testing.T) {
 	go wrapper.Translate(testPhrase, language.German, language.English, &out)
 
 	select {
-	case result := <- out:
+	case result := <-out:
 		if result.Error == nil {
 			t.Error("circuitbreaker returned no error when it should have")
 		}
-		break;
+		break
 
 	case <-time.After(time.Second):
 		t.Error("operation timed out when it should have returned")
-		break;
+		break
 	}
 }
 
@@ -94,15 +94,15 @@ func TestCircuitBreaker_TranslateBreakerNil(t *testing.T) {
 	go wrapper.Translate(testPhrase, language.German, language.English, &out)
 
 	select {
-	case result := <- out:
+	case result := <-out:
 		if result.Error == nil {
 			t.Error("circuitbreaker returned no error when it should have")
 		}
-		break;
+		break
 
 	case <-time.After(time.Second):
 		t.Error("operation timed out when it should have returned")
-		break;
+		break
 	}
 }
 
@@ -110,13 +110,13 @@ func TestCircuitBreaker_TranslateHandlerFail(t *testing.T) {
 	breaker := circuit.NewBreaker()
 	wrapper := CircuitBreaker{
 		Breaker: breaker,
-		Handler: Mock{Failing:true},
+		Handler: Mock{Failing: true},
 	}
 	out := make(chan Result)
 	go wrapper.Translate(testPhrase, language.German, language.English, &out)
 
 	select {
-	case result := <- out:
+	case result := <-out:
 		if result.Error == nil {
 			t.Error("circuitbreaker returned no error when it should have")
 		}
@@ -124,10 +124,10 @@ func TestCircuitBreaker_TranslateHandlerFail(t *testing.T) {
 		if breaker.Failures() != 1 {
 			t.Error("circuitbreaker should record upstream errors")
 		}
-		break;
+		break
 
 	case <-time.After(time.Second):
 		t.Error("operation timed out when it should have returned")
-		break;
+		break
 	}
 }

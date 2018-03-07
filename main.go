@@ -6,6 +6,8 @@ package main
 import (
 	"context"
 	"errors"
+	"github.com/auth0/go-jwt-middleware"
+	"github.com/dgrijalva/jwt-go"
 	"github.com/kuboschek/translate-server/cache"
 	"github.com/kuboschek/translate-server/upstream"
 	"log"
@@ -13,13 +15,11 @@ import (
 	"os"
 	"os/signal"
 	"time"
-	"github.com/auth0/go-jwt-middleware"
-	"github.com/dgrijalva/jwt-go"
 )
 
 var (
 	translateHandler TranslateHandler
-	tokenKey		string
+	tokenKey         string
 )
 
 // init adds translation handlers based on the environment variables present
@@ -71,17 +71,15 @@ func init() {
 func main() {
 	http.Handle("/", translateHandler)
 
-
 	// This adds simple authentication to the service.
 	// Any bearer of a valid token may translate as much as they desire.
 	tokenMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
 		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
 			return []byte(tokenKey), nil
 		},
-		SigningMethod:jwt.SigningMethodHS256,
+		SigningMethod: jwt.SigningMethodHS256,
 	})
 	handler := tokenMiddleware.Handler(http.DefaultServeMux)
-
 
 	// Setting timeouts here to mitigate certain Denial-of-Service attacks
 	srv := &http.Server{
