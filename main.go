@@ -13,9 +13,14 @@ import (
 	"os"
 	"os/signal"
 	"time"
+	"github.com/auth0/go-jwt-middleware"
+	"github.com/dgrijalva/jwt-go"
 )
 
-var translateHandler TranslateHandler
+var (
+	translateHandler TranslateHandler
+	tokenKey		string
+)
 
 // init adds translation handlers based on the environment variables present
 func init() {
@@ -47,6 +52,13 @@ func init() {
 		})
 	}
 
+	// This is the secret key used to sign JSON Web Tokens
+	tokenKey = os.Getenv("SECRET_KEY")
+	if tokenKey == "" {
+		// TODO Replace by generated character string
+		tokenKey = "uihesrioesjrjoiseros"
+	}
+
 	// If nothing is enabled, all requests would immediately fail
 	// Shutting down immediately makes the configuration error more
 	// observable
@@ -59,10 +71,22 @@ func init() {
 func main() {
 	http.Handle("/", translateHandler)
 
+
+	// This adds simple authentication to the service.
+	// Any bearer of a valid token may translate as much as they desire.
+	tokenMiddleware := jwtmiddleware.New(jwtmiddleware.Options{
+		ValidationKeyGetter: func(token *jwt.Token) (interface{}, error) {
+			return []byte(tokenKey), nil
+		},
+		SigningMethod:jwt.SigningMethodHS256,
+	})
+	handler := tokenMiddleware.Handler(http.DefaultServeMux)
+
+
 	// Setting timeouts here to mitigate certain Denial-of-Service attacks
 	srv := &http.Server{
 		Addr:         "0.0.0.0:8080",
-		Handler:      http.DefaultServeMux,
+		Handler:      handler,
 		ReadTimeout:  time.Second * 10,
 		IdleTimeout:  time.Second * 10,
 		WriteTimeout: time.Second * 10,
