@@ -10,6 +10,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/kuboschek/translate-server/cache"
 	"github.com/kuboschek/translate-server/upstream"
+	"github.com/rubyist/circuitbreaker"
 	"log"
 	"net/http"
 	"os"
@@ -31,25 +32,40 @@ func init() {
 	// Enable the Google backend if a key is given
 	googleKey := os.Getenv("GOOGLE_API_KEY")
 	if googleKey != "" {
-		translateHandler.Services = append(translateHandler.Services, upstream.Google{
-			Key: googleKey,
-		})
+		cb := upstream.CircuitBreaker{
+			Breaker: circuit.NewRateBreaker(0.95, 100),
+			Handler: upstream.Google{
+				Key: googleKey,
+			},
+		}
+
+		translateHandler.Services = append(translateHandler.Services, &cb)
 	}
 
 	// Enable the Bing backend if a key is given
 	bingKey := os.Getenv("BING_API_KEY")
 	if bingKey != "" {
-		translateHandler.Services = append(translateHandler.Services, upstream.Azure{
-			ServiceKey: bingKey,
-		})
+		cb := upstream.CircuitBreaker{
+			Breaker: circuit.NewRateBreaker(0.95, 100),
+			Handler: upstream.Azure{
+				ServiceKey: bingKey,
+			},
+		}
+
+		translateHandler.Services = append(translateHandler.Services, &cb)
 	}
 
 	// This is useful for testing, enables a failing mock backend
 	enableMock := os.Getenv("ENABLE_MOCK")
 	if enableMock != "" {
-		translateHandler.Services = append(translateHandler.Services, upstream.Mock{
-			Failing: true,
-		})
+		cb := upstream.CircuitBreaker{
+			Breaker: circuit.NewRateBreaker(0.95, 10),
+			Handler: upstream.Mock{
+				Failing: true,
+			},
+		}
+
+		translateHandler.Services = append(translateHandler.Services, &cb)
 	}
 
 	// This is the secret key used to sign JSON Web Tokens
