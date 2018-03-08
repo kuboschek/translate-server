@@ -17,7 +17,6 @@ type Mock struct {
 // If Delay is set to non-zero values, waits for the given time before responding.
 func (p Mock) Translate(givenPhrase string, givenLang, targetLang language.Tag, out *chan Result) {
 	log.Printf("Mock (%#v) got request: \"%v\" (%v -> %v)", p, givenPhrase, givenLang, targetLang)
-	defer close(*out)
 
 	if p.Delay > 0 {
 		log.Printf("Simulating service delay of %v", p.Delay)
