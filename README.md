@@ -17,17 +17,18 @@ translation limits.
 
 ## Scope
 
-Currently, there is only a backend implementation. Furthermore, there is currently no backend for external cache services,
+Currently, there are only two backend implementation. Furthermore, there is currently no backend for external cache services,
 and no expiry timer for cached items.
 
 Future improvements planned are:
  * Integration tests for upstreams
  * Concurrently calling multiple upstreams
- * Implement an authorization mechanism for clients
  * Enabling load-balancing to multiple upstreams / expanding failover options
  * Controlling the cache backend / settings at runtime
+ * Limiting simultaneous upstream requests
  * Backfilling / cache warming for likely future translations
  * Implementing a streaming RPC endpoint
+ * Rate-limiting by different user groups
  * Front-end to manually perform translations
  * API for injecting company-specific vocabulary
  * Allowing for templated translations / placeholders
@@ -66,21 +67,36 @@ Additionally, this is one of my earlier projects utilizing Go as a language.
 
 ## HTTP Interface
 
+### Authentication
+This service authenticates all requests by checking the presence of a JSON Web Token (JWT). There is currently no further
+authorization strategy, all authenticated requests are allowed.
+
+JWTs are checked with the following parameters:
+ * Algorithm: `HS256`
+ * Secret Key: Set using environment variable `SECRET_KEY`
+
+At present, no claims are required on the tokens.
+
+### Request Format
+
 The server accepts HTTP `POST` requests to port 8080, the path is `/`.
 
 The headers required are:
  * `Content-Language` specifying the language that the request content is assumed to be in.
  * `Accept-Language` specifying the target language.
+ * `Authorization` containing the string `Bearer ` followed by a JSON Web Token (see authentication section)
 
 The text to be translated is sent in the request body; The content type shall be `text/plain`.
+
+### Response Format
 
 The response will contain the `Content-Language` header for the target language, as well as the translated text in the
 response body. In case of an error, standard HTTP status codes are used for signaling.
 
 ### Sample Deployment
 
-There is a sample deployment running at translate dot leo dot codes. It's secured using HTTP Basic Auth to prevent
-misuse. If you would like to receive testing credentials, please send me an email (see homepage links below).
+There is a sample deployment running at translate dot leo dot codes. It authenticates requests by JSON Web Token.
+If you would like to receive testing credentials, please send me an email (see homepage links below).
 
 ### Sample request using `cURL`
     curl -X POST \
@@ -90,4 +106,4 @@ misuse. If you would like to receive testing credentials, please send me an emai
     -d 'Also wirklich!'
 
 ## Docker Image
-    `docker run -p 8080:8080 -e GOOGLE_API_KEY=$GOOGLE_API_KEY kuboschek/translate-server`
+    `docker run -p 8080:8080 -e GOOGLE_API_KEY=$GOOGLE_API_KEY -e SECRET_KEY=yoursecretkey kuboschek/translate-server`
