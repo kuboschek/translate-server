@@ -7,6 +7,7 @@ import (
 	"golang.org/x/text/language"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"time"
 )
@@ -28,15 +29,6 @@ func writeSuccess(w http.ResponseWriter, targetLanguage language.Tag, targetPhra
 	headers.Set("Content-Language", targetLanguage.String())
 	w.WriteHeader(http.StatusOK)
 	io.WriteString(w, targetPhrase)
-}
-
-// moveToBack moves a upstream service reference to the back of the list
-func (h TranslateHandler) moveToBack(index int) {
-	var movedService = h.Services[index]
-
-	copy(h.Services[index:], h.Services[index+1:])
-	h.Services[len(h.Services)-1] = nil // set to the zero value
-	h.Services = append(h.Services[:len(h.Services)-1], movedService)
 }
 
 func (h TranslateHandler) ServeHTTP(response http.ResponseWriter, request *http.Request) {
@@ -88,8 +80,18 @@ func (h TranslateHandler) ServeHTTP(response http.ResponseWriter, request *http.
 
 	serviceResponse := make(chan upstream.Result)
 
+	var queryOrder []int
+
+	if len(h.Services) == 1 {
+		queryOrder = []int{0}
+	} else if len(h.Services) > 1 {
+		queryOrder = rand.Perm(len(h.Services))
+	}
+
 	// Go through all the services in order - return the first successful result
-	for index, svc := range h.Services {
+	for index := range queryOrder {
+		svc := h.Services[index]
+
 		go svc.Translate(givenPhrase, contentLanguage, targetLanguage, &serviceResponse)
 
 		// Wait for the response from the service for a specified time
@@ -110,17 +112,11 @@ func (h TranslateHandler) ServeHTTP(response http.ResponseWriter, request *http.
 				writeSuccess(response, result.TargetLang, result.TranslatedPhrase)
 				return
 			}
-
-			// Move the failing service to the end of the list
-			h.moveToBack(index)
 			log.Printf("failed to fetch translations: %v", result.Error)
-
 			break
 
 		case <-time.After(timeout):
-			// Also move a service back in the list if it times out
-			h.moveToBack(index)
-			log.Printf("upstream service timed out after: %v", timeout)
+			log.Printf("upstream timed out after %v", timeout)
 			break
 		}
 	}

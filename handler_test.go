@@ -204,37 +204,6 @@ func TestCachedResponseCorrect(t *testing.T) {
 	}
 }
 
-// TestMoveToBack checks if the handler's moveToBack method moves a service
-// to the end of the list
-func TestMoveToBack(t *testing.T) {
-
-	var handler = TranslateHandler{
-		[]upstream.Service{
-			upstream.Mock{
-				Failing: true,
-			},
-			upstream.Mock{
-				Delay: time.Second * 123,
-			},
-		},
-		nil,
-	}
-
-	handler.moveToBack(0)
-
-	if len(handler.Services) != 2 {
-		t.Errorf("moveToBack should not remove or add items. got len %v want len %v", len(handler.Services), 2)
-	}
-
-	if handler.Services[0].(upstream.Mock).Delay != time.Second*123 {
-		t.Error("moveToBack should move the service with a given index to the back of the list.")
-	}
-
-	if handler.Services[1].(upstream.Mock).Failing != true {
-		t.Error("moveToBack should move the specified service to the back of the list.")
-	}
-}
-
 // TestTimeOut checks if the handler times out after a certain time
 func TestTimeOut(t *testing.T) {
 	content := bytes.NewBufferString(cacheString)
@@ -256,5 +225,28 @@ func TestTimeOut(t *testing.T) {
 
 	if rr.Code != http.StatusBadGateway {
 		t.Error("handler should return a 502 when upstream services time out")
+	}
+}
+
+// TestMultipleUpstreams checks if well-formed requests return correct results
+// when using multiple upstreams
+func TestMultipleUpstreams(t *testing.T) {
+	content := bytes.NewBufferString("Guten Morgen.")
+	req := httptest.NewRequest(http.MethodPost, "/", content)
+	req.Header.Set("Accept-Language", "en,fr")
+	req.Header.Set("Content-Language", "de")
+	rr := httptest.NewRecorder()
+
+	translateHandler := TranslateHandler{
+		[]upstream.Service{
+			upstream.Mock{Failing: true},
+			upstream.Mock{},
+		},
+		nil,
+	}
+	translateHandler.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Error("translateHandler should accept requests with appropriate headers.")
 	}
 }
